@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "my-secret-key")
 
-# Use /tmp on Vercel/Serverless to avoid read-only filesystem errors
+# File upload handling for serverless
 if os.environ.get("VERCEL") or not os.access('.', os.W_OK):
     UPLOAD_FOLDER = '/tmp'
 else:
@@ -15,15 +15,7 @@ else:
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Only attempt folder creation if path doesn't exist
-if not os.path.exists(UPLOAD_FOLDER):
-    try:
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    except Exception:
-        UPLOAD_FOLDER = '/tmp'
-        app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# --- MySQL Configuration (Reads Environment Variables from Vercel) ---
+# --- MySQL Configuration ---
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mysql-1103018b-scrapbook.d.aivencloud.com')
 MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 12968))
 MYSQL_USER = os.environ.get('MYSQL_USER', 'avnadmin')
@@ -32,15 +24,67 @@ MYSQL_DB = os.environ.get('MYSQL_DB', 'defaultdb')
 
 
 def get_db():
-    return pymysql.connect(
+    conn = pymysql.connect(
         host=MYSQL_HOST,
         port=MYSQL_PORT,
         user=MYSQL_USER,
         password=MYSQL_PASSWORD,
         database=MYSQL_DB,
         cursorclass=pymysql.cursors.DictCursor,
-        ssl={'ssl': {}}  # <-- REQUIRED for Aiven MySQL
+        ssl={'ssl': {}}
     )
+    return conn
+
+
+def init_db():
+    """Ensure database tables exist on Aiven MySQL."""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            first_name VARCHAR(100),
+            last_name VARCHAR(100),
+            username VARCHAR(100) UNIQUE,
+            email VARCHAR(100) UNIQUE,
+            phone VARCHAR(20),
+            dob VARCHAR(20),
+            gender VARCHAR(20),
+            password VARCHAR(255)
+        )
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS scrapbooks(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            name VARCHAR(255) NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS memories(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            scrapbook_id INT,
+            image_path VARCHAR(255),
+            caption TEXT,
+            date VARCHAR(50),
+            FOREIGN KEY(scrapbook_id) REFERENCES scrapbooks(id) ON DELETE CASCADE
+        )
+        """)
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("DB Init Error:", e)
+
+
+# Run table creation when app starts on Vercel
+with app.app_context():
+    init_db()
 
 
 @app.route("/")
@@ -51,15 +95,15 @@ def home():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        first_name = request.form["first_name"]
-        last_name = request.form["last_name"]
-        username = request.form["username"]
-        email = request.form["email"]
-        phone = request.form["phone"]
-        dob = request.form["dob"]
-        gender = request.form["gender"]
-        password = request.form["password"]
-        confirm = request.form["confirm_password"]
+        first_name = request.form.get("first_name", "")
+        last_name = request.form.get("last_name", "")
+        username = request.form.get("username", "")
+        email = request.form.get("email", "")
+        phone = request.form.get("phone", "")
+        dob = request.form.get("dob", "")
+        gender = request.form.get("gender", "")
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm_password", "")
 
         if password != confirm:
             return "Passwords do not match."
@@ -94,8 +138,8 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form["email"]
-        password = request.form["password"]
+        email = request.form.get("email", "")
+        password = request.form.get("password", "")
 
         conn = get_db()
         cursor = conn.cursor()
@@ -234,10 +278,12 @@ def delete_memory(memory_id):
 
     return jsonify({"success": True})
 
+
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
 
 if __name__ == "__main__":
     app.run(debug=True)
