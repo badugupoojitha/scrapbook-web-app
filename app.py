@@ -7,78 +7,29 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "my-secret-key")
 
-UPLOAD_FOLDER = 'static/uploads'
+# For Vercel Serverless (use /tmp for file uploads)
+UPLOAD_FOLDER = '/tmp/uploads' if os.environ.get("VERCEL") else 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# --- MySQL Configuration ---
-MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
-MYSQL_USER = os.environ.get('MYSQL_USER', 'root')
-MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'b.poojitha27')
-MYSQL_DB = 'scrapbook_db'
+# --- MySQL Configuration (Reads Environment Variables from Vercel) ---
+MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mysql-1103018b-scrapbook.d.aivencloud.com')
+MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 12968))
+MYSQL_USER = os.environ.get('MYSQL_USER', 'avnadmin')
+MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
+MYSQL_DB = os.environ.get('MYSQL_DB', 'defaultdb')
 
 
 def get_db():
     return pymysql.connect(
         host=MYSQL_HOST,
+        port=MYSQL_PORT,
         user=MYSQL_USER,
         password=MYSQL_PASSWORD,
         database=MYSQL_DB,
-        cursorclass=pymysql.cursors.DictCursor
+        cursorclass=pymysql.cursors.DictCursor,
+        ssl={'ssl': {}}  # <-- REQUIRED for Aiven MySQL
     )
-
-
-def init_db():
-    # 1. Connect without selecting a database to ensure 'scrapbook_db' exists
-    conn = pymysql.connect(
-        host=MYSQL_HOST,
-        user=MYSQL_USER,
-        password=MYSQL_PASSWORD
-    )
-    cursor = conn.cursor()
-    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DB};")
-    conn.close()
-
-    # 2. Connect to 'scrapbook_db' and create missing tables
-    conn = get_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users(
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        first_name VARCHAR(100),
-        last_name VARCHAR(100),
-        username VARCHAR(100) UNIQUE,
-        email VARCHAR(100) UNIQUE,
-        phone VARCHAR(20),
-        dob VARCHAR(20),
-        gender VARCHAR(20),
-        password VARCHAR(255)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS scrapbooks(
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT,
-        name VARCHAR(255) NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS memories(
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        scrapbook_id INT,
-        image_path VARCHAR(255),
-        caption TEXT,
-        date VARCHAR(50),
-        FOREIGN KEY(scrapbook_id) REFERENCES scrapbooks(id) ON DELETE CASCADE
-    )
-    """)
-
-    conn.commit()
-    conn.close()
 
 
 @app.route("/")
@@ -278,5 +229,4 @@ def logout():
     return redirect(url_for("login"))
 
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)
