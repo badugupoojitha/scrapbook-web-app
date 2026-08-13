@@ -7,10 +7,21 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "my-secret-key")
 
-# For Vercel Serverless (use /tmp for file uploads)
-UPLOAD_FOLDER = '/tmp/uploads' if os.environ.get("VERCEL") else 'static/uploads'
+# Use /tmp on Vercel/Serverless to avoid read-only filesystem errors
+if os.environ.get("VERCEL") or not os.access('.', os.W_OK):
+    UPLOAD_FOLDER = '/tmp'
+else:
+    UPLOAD_FOLDER = 'static/uploads'
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Only attempt folder creation if path doesn't exist
+if not os.path.exists(UPLOAD_FOLDER):
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    except Exception:
+        UPLOAD_FOLDER = '/tmp'
+        app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # --- MySQL Configuration (Reads Environment Variables from Vercel) ---
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mysql-1103018b-scrapbook.d.aivencloud.com')
