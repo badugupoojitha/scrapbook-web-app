@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrapbook</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='scrapbook.css') }}">
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">📖 Scrapbook</div>
+
+        <div class="profile">
+            <span>👤 {{ session.get('username') }}</span>
+            <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+        </div>
+    </header>
+
+    <main>
+
+    <div id="homePage">
+
+        <h1>
+            Collect Moments.<br>
+            Keep Them Forever.
+        </h1>
+
+        <button id="createBtn">Create a New Scrapbook</button>
+
+        <h2>✨ My Scrapbooks ✨</h2>
+
+        <div id="scrapbookContainer"></div>
+
+    </div>
+
+    <div id="scrapbookPage" style="display:none;">
+
+    <button id="backBtn">← Back</button>
+
+    <h1 id="openedBookName"></h1>
+
+    <button id="addMemoryBtn">+ Add Memory</button>
+
+    <div id="memoryContainer"></div>
+
+
+    </div>
+
+    <div id="memoryPopup" class="popup">
+
+    <div class="popup-content">
+
+        <h2>✨ Add New Memory ✨</h2>
+
+<label for="memoryImage">📷 Choose Photo</label>
+<input type="file" id="memoryImage" accept="image/*">
+
+<label for="memoryCaption">📝 Caption</label>
+<textarea
+    id="memoryCaption"
+    placeholder="Write something about this memory..."
+></textarea>
+
+<label for="memoryDate">📅 Date</label>
+<input type="date" id="memoryDate">
+
+<div class="memoryButtons">
+    <button id="cancelMemoryBtn">Cancel</button>
+    <button id="saveMemoryBtn">Save Memory</button>
+</div>
+
+        
+    </div>
+
+</div>
+
+
+        </main>
+
+<div class="popup" id="popup">
+
+    <h2>Create a Scrapbook</h2>
+
+    <input
+    type="text"
+    id="scrapbookName"
+    placeholder="Enter scrapbook name">
+
+    <button id="cancelBtn">Cancel</button> 
+
+    <button id="saveBtn">Create</button>
+
+</div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>

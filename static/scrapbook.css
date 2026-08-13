@@ -1,0 +1,254 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body{
+    font-family: Arial, sans-serif;
+    background-color: #FFF8F0;
+    height: 100vh;
+}
+
+header{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+}
+
+.logo{
+    font-size: 28px;
+    font-weight: bold;
+    color: #5A3E36;
+}
+
+.profile{
+    font-size: 30px;
+    cursor: pointer;
+}
+
+main{
+    min-height: 80vh; /* Changed from height: 80vh to min-height */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+#homePage, #scrapbookPage {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+h1{
+    color: #5A3E36;
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 30px;
+}
+
+button{
+    padding: 15px 30px;
+    font-size: 18px;
+    border: none;
+    border-radius: 12px;
+    background-color: #D89B6B;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover{
+    background-color: #C67C45;
+}
+
+.popup{
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0px 5px 20px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+#scrapbookContainer {
+    margin-top: 30px;
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+#memoryContainer {
+    margin-top: 30px;
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+}
+
+.scrapbookCard {
+    width: 180px;
+    height: 220px;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+
+.scrapbookCard:hover {
+    transform: translateY(-8px);
+}
+
+
+.bookIcon {
+    font-size: 60px;
+    margin-top: 30px;
+}
+
+
+.scrapbookCard h3 {
+    margin-top: 20px;
+}
+
+h2 {
+    margin-top: 30px;
+    font-size: 28px;
+}
+
+#addMemoryBtn {
+    margin: 20px 0;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    background-color: #C67C45;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+#addMemoryBtn:hover {
+    transform: scale(1.05);
+}
+
+#backBtn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.3s;
+    background-color: #C67C45;
+    color: white;
+    font-size: 16px;
+}
+
+#backBtn:hover {
+    transform: scale(1.05);
+}
+
+#memoryPopup {
+    display: none;
+}
+
+.popup-content {
+    width: 420px;
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.popup-content h2 {
+    text-align: center;
+    color: #5A3E36;
+    margin-bottom: 10px;
+}
+
+.popup-content label {
+    font-weight: bold;
+    color: #5A3E36;
+    text-align: left;
+    margin-bottom: -8px;
+}
+
+.popup-content input[type="date"],
+.popup-content textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d8d8d8;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+}
+
+.popup-content textarea {
+    height: 100px;
+    resize: none;
+}
+
+.popup-content input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px dashed #D89B6B;
+    border-radius: 10px;
+    background-color: #FFF8F0;
+    cursor: pointer;
+}
+
+.memoryButtons {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.memoryButtons button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+}
+
+.logout-link {
+    font-size: 16px;
+    color: #5A3E36;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 6px 12px;
+    border: 1px solid #5A3E36;
+    border-radius: 8px;
+    transition: 0.2s;
+}
+
+.logout-link:hover {
+    background-color: #5A3E36;
+    color: white;
+}

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+
+    <h2>Create Account</h2>
+
+    <form action="{{ url_for('register') }}" method="POST">
+
+        <div class="row">
+
+            <div class="input-box">
+                <label>First Name</label>
+                <input type="text" name="first_name" placeholder="Enter First Name" required>
+            </div>
+
+            <div class="input-box">
+                <label>Last Name</label>
+                <input type="text" name="last_name" placeholder="Enter Last Name" required>
+            </div>
+
+        </div>
+
+        <div class="input-box">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Enter Username" required>
+        </div>
+
+        <div class="input-box">
+            <label>Email</label>
+            <input type="email" name="email" placeholder="Enter Email" required>
+        </div>
+
+        <div class="input-box">
+            <label>Phone Number</label>
+            <input type="tel" name="phone" placeholder="Enter Phone Number" required>
+        </div>
+
+        <div class="input-box">
+            <label>Date of Birth</label>
+            <input type="date" name="dob" required>
+        </div>
+
+        <div class="input-box">
+            <label>Gender</label>
+
+            <div class="gender">
+                <label><input type="radio" name="gender" value="Male" required> Male</label>
+                <label><input type="radio" name="gender" value="Female"> Female</label>
+                <label><input type="radio" name="gender" value="Other"> Other</label>
+            </div>
+
+        </div>
+
+        <div class="input-box">
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter Password" required>
+        </div>
+
+        <div class="input-box">
+            <label>Confirm Password</label>
+            <input type="password" name="confirm_password" placeholder="Confirm Password" required>
+        </div>
+
+        <button type="submit">Register</button>
+
+        <p class="link">
+            Already have an account?
+            <a href="{{ url_for('login') }}">Login</a>
+        </p>
+
+    </form>
+
+</div>
+
+</body>
+</html>
