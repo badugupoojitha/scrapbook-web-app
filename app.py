@@ -19,7 +19,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mysql-1103018b-scrapbook.d.aivencloud.com')
 MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 12968))
 MYSQL_USER = os.environ.get('MYSQL_USER', 'avnadmin')
-MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
+MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'AVNS_HcZH3EXfhrggGkCSZ1n')
 MYSQL_DB = os.environ.get('MYSQL_DB', 'defaultdb')
 
 
