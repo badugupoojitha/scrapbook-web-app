@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import pymysql
 import os
+import ssl
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -15,25 +16,32 @@ else:
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# --- MySQL Configuration ---
-MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mysql-1103018b-scrapbook.d.aivencloud.com')
-MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 12968))
-MYSQL_USER = os.environ.get('MYSQL_USER', 'avnadmin')
-MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'AVNS_HcZH3EXfhrggGkCSZ1n')
-MYSQL_DB = os.environ.get('MYSQL_DB', 'defaultdb')
+# --- MySQL Configuration from Environment Variables ---
+MYSQL_HOST = os.environ.get('MYSQL_HOST')
+MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 3306))
+MYSQL_USER = os.environ.get('MYSQL_USER')
+MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD')
+MYSQL_DB = os.environ.get('MYSQL_DB')
 
 
 def get_db():
-    conn = pymysql.connect(
-        host=MYSQL_HOST,
-        port=MYSQL_PORT,
-        user=MYSQL_USER,
-        password=MYSQL_PASSWORD,
-        database=MYSQL_DB,
-        cursorclass=pymysql.cursors.DictCursor,
-        ssl={'ssl': {}}
-    )
-    return conn
+    """Establish a secure connection to Aiven MySQL."""
+    try:
+        ssl_ctx = ssl.create_default_context()
+        conn = pymysql.connect(
+            host=MYSQL_HOST,
+            port=MYSQL_PORT,
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
+            database=MYSQL_DB,
+            cursorclass=pymysql.cursors.DictCursor,
+            ssl=ssl_ctx,
+            connect_timeout=10
+        )
+        return conn
+    except Exception as e:
+        print("Database connection failed:", e)
+        raise e
 
 
 def init_db():
@@ -82,9 +90,10 @@ def init_db():
         print("DB Init Error:", e)
 
 
-# Run table creation when app starts on Vercel
-with app.app_context():
-    init_db()
+# --- IMPORTANT: Commented out for Vercel Serverless ---
+# Running DDL on cold starts causes timeouts and connection limits on serverless.
+# with app.app_context():
+#     init_db()
 
 
 @app.route("/")
@@ -106,31 +115,35 @@ def register():
         confirm = request.form.get("confirm_password", "")
 
         if password != confirm:
-            return "Passwords do not match."
+            return "Passwords do not match.", 400
 
-        conn = get_db()
-        cursor = conn.cursor()
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
 
-        cursor.execute(
-            "SELECT * FROM users WHERE email=%s OR username=%s",
-            (email, username)
-        )
-        user = cursor.fetchone()
+            cursor.execute(
+                "SELECT * FROM users WHERE email=%s OR username=%s",
+                (email, username)
+            )
+            user = cursor.fetchone()
 
-        if user:
+            if user:
+                conn.close()
+                return "Email or Username already exists.", 400
+
+            cursor.execute("""
+            INSERT INTO users(first_name, last_name, username, email, phone, dob, gender, password)
+            VALUES(%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (first_name, last_name, username, email, phone, dob, gender, generate_password_hash(password)))
+
+            conn.commit()
             conn.close()
-            return "Email or Username already exists."
 
-        cursor.execute("""
-        INSERT INTO users(first_name, last_name, username, email, phone, dob, gender, password)
-        VALUES(%s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-        (first_name, last_name, username, email, phone, dob, gender, generate_password_hash(password)))
-
-        conn.commit()
-        conn.close()
-
-        return redirect(url_for("login"))
+            return redirect(url_for("login"))
+        except Exception as e:
+            print("Register error:", e)
+            return f"Database Error during registration: {str(e)}", 500
 
     return render_template("reg.html")
 
@@ -141,19 +154,23 @@ def login():
         email = request.form.get("email", "")
         password = request.form.get("password", "")
 
-        conn = get_db()
-        cursor = conn.cursor()
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
-        user = cursor.fetchone()
-        conn.close()
+            cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
+            user = cursor.fetchone()
+            conn.close()
 
-        if user and check_password_hash(user["password"], password):
-            session["user_id"] = user["id"]
-            session["username"] = user["username"]
-            return redirect(url_for("scrapbook"))
+            if user and check_password_hash(user["password"], password):
+                session["user_id"] = user["id"]
+                session["username"] = user["username"]
+                return redirect(url_for("scrapbook"))
 
-        return "Invalid Email or Password."
+            return "Invalid Email or Password.", 401
+        except Exception as e:
+            print("Login error:", e)
+            return f"Database Error during login: {str(e)}", 500
 
     return render_template("log.html")
 
@@ -170,14 +187,17 @@ def get_scrapbooks():
     if "user_id" not in session:
         return jsonify({"error": "Not logged in"}), 401
 
-    conn = get_db()
-    cursor = conn.cursor()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
 
-    cursor.execute("SELECT id, name FROM scrapbooks WHERE user_id=%s", (session["user_id"],))
-    rows = cursor.fetchall()
-    conn.close()
+        cursor.execute("SELECT id, name FROM scrapbooks WHERE user_id=%s", (session["user_id"],))
+        rows = cursor.fetchall()
+        conn.close()
 
-    return jsonify([{"id": row["id"], "name": row["name"], "memories": []} for row in rows])
+        return jsonify([{"id": row["id"], "name": row["name"], "memories": []} for row in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/scrapbooks", methods=["POST"])
@@ -191,16 +211,19 @@ def create_scrapbook():
     if not name:
         return jsonify({"error": "Scrapbook name is required"}), 400
 
-    conn = get_db()
-    cursor = conn.cursor()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
 
-    cursor.execute("INSERT INTO scrapbooks(user_id, name) VALUES(%s, %s)", (session["user_id"], name))
-    scrapbook_id = cursor.lastrowid
+        cursor.execute("INSERT INTO scrapbooks(user_id, name) VALUES(%s, %s)", (session["user_id"], name))
+        scrapbook_id = cursor.lastrowid
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
 
-    return jsonify({"id": scrapbook_id, "name": name, "memories": []})
+        return jsonify({"id": scrapbook_id, "name": name, "memories": []})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/scrapbooks/<int:scrapbook_id>", methods=["DELETE"])
@@ -208,14 +231,17 @@ def delete_scrapbook(scrapbook_id):
     if "user_id" not in session:
         return jsonify({"error": "Not logged in"}), 401
 
-    conn = get_db()
-    cursor = conn.cursor()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM scrapbooks WHERE id=%s AND user_id=%s", (scrapbook_id, session["user_id"]))
-    conn.commit()
-    conn.close()
+        cursor.execute("DELETE FROM scrapbooks WHERE id=%s AND user_id=%s", (scrapbook_id, session["user_id"]))
+        conn.commit()
+        conn.close()
 
-    return jsonify({"success": True})
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/scrapbooks/<int:scrapbook_id>/memories", methods=["GET"])
@@ -223,14 +249,17 @@ def get_memories(scrapbook_id):
     if "user_id" not in session:
         return jsonify({"error": "Not logged in"}), 401
 
-    conn = get_db()
-    cursor = conn.cursor()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
 
-    cursor.execute("SELECT id, image_path, caption, date FROM memories WHERE scrapbook_id=%s", (scrapbook_id,))
-    rows = cursor.fetchall()
-    conn.close()
+        cursor.execute("SELECT id, image_path, caption, date FROM memories WHERE scrapbook_id=%s", (scrapbook_id,))
+        rows = cursor.fetchall()
+        conn.close()
 
-    return jsonify(rows)
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/scrapbooks/<int:scrapbook_id>/memories", methods=["POST"])
@@ -249,19 +278,22 @@ def add_memory(scrapbook_id):
         file.save(file_path)
         image_path = f"/static/uploads/{filename}"
 
-    conn = get_db()
-    cursor = conn.cursor()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
 
-    cursor.execute(
-        "INSERT INTO memories (scrapbook_id, image_path, caption, date) VALUES (%s, %s, %s, %s)",
-        (scrapbook_id, image_path, caption, date)
-    )
+        cursor.execute(
+            "INSERT INTO memories (scrapbook_id, image_path, caption, date) VALUES (%s, %s, %s, %s)",
+            (scrapbook_id, image_path, caption, date)
+        )
 
-    memory_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
+        memory_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
 
-    return jsonify({"id": memory_id, "image_path": image_path, "caption": caption, "date": date})
+        return jsonify({"id": memory_id, "image_path": image_path, "caption": caption, "date": date})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/memories/<int:memory_id>", methods=["DELETE"])
@@ -269,14 +301,17 @@ def delete_memory(memory_id):
     if "user_id" not in session:
         return jsonify({"error": "Not logged in"}), 401
 
-    conn = get_db()
-    cursor = conn.cursor()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM memories WHERE id=%s", (memory_id,))
-    conn.commit()
-    conn.close()
+        cursor.execute("DELETE FROM memories WHERE id=%s", (memory_id,))
+        conn.commit()
+        conn.close()
 
-    return jsonify({"success": True})
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/logout")
