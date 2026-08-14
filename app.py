@@ -91,7 +91,6 @@ def init_db():
 
 
 # --- IMPORTANT: Commented out for Vercel Serverless ---
-# Running DDL on cold starts causes timeouts and connection limits on serverless.
 # with app.app_context():
 #     init_db()
 
