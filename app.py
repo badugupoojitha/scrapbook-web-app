@@ -16,36 +16,44 @@ else:
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# --- MySQL Configuration from Environment Variables ---
-MYSQL_HOST = os.environ.get('MYSQL_HOST')
-MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 3306))
-MYSQL_USER = os.environ.get('MYSQL_USER')
-MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD')
-MYSQL_DB = os.environ.get('MYSQL_DB')
+# --- TiDB Cloud Configuration ---
+TIDB_HOST = os.environ.get("TIDB_HOST")
+TIDB_PORT = int(os.environ.get("TIDB_PORT", 4000))
+TIDB_USER = os.environ.get("TIDB_USER")
+TIDB_PASSWORD = os.environ.get("TIDB_PASSWORD")
+TIDB_DB_NAME = os.environ.get("TIDB_DB_NAME")
+TIDB_CA_CERT = os.environ.get("TIDB_CA_CERT")
 
 
 def get_db():
-    """Establish a secure connection to Aiven MySQL."""
+    """Connect securely to TiDB Cloud."""
     try:
         ssl_ctx = ssl.create_default_context()
+
+        if TIDB_CA_CERT:
+            ssl_ctx.load_verify_locations(cadata=TIDB_CA_CERT)
+
         conn = pymysql.connect(
-            host=MYSQL_HOST,
-            port=MYSQL_PORT,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            database=MYSQL_DB,
+            host=TIDB_HOST,
+            port=TIDB_PORT,
+            user=TIDB_USER,
+            password=TIDB_PASSWORD,
+            database=TIDB_DB_NAME,
             cursorclass=pymysql.cursors.DictCursor,
             ssl=ssl_ctx,
-            connect_timeout=10
+            connect_timeout=10,
+            charset="utf8mb4"
         )
+
         return conn
+
     except Exception as e:
-        print("Database connection failed:", e)
+        print("TiDB connection failed:", e)
         raise e
 
 
 def init_db():
-    """Ensure database tables exist on Aiven MySQL."""
+    """Ensure database tables exist on TiDB Cloud."""
     try:
         conn = get_db()
         cursor = conn.cursor()
